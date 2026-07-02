@@ -1,4 +1,6 @@
 import html
+import json
+import os
 import streamlit as st
 import pandas as pd
 import gspread
@@ -32,21 +34,19 @@ SHEET_ID = "1SAVhTWod1nQynvmkgLiM_a6yfC0PVSTtwpXPqhK9cEA"
 SHEET_NAME = "Leads"
 APPROVAL_COL = "approval_status"
 
-# NOTE: move this to st.secrets / environment variables — a hardcoded
-# service-account key in source is a real credential leak risk.
-SERVICE_ACCOUNT_INFO = {
-    "type": "service_account",
-    "project_id": "aaw-automation",
-    "private_key_id": "6c32ee12d6ed9ef512e744a5ab498d7902574313",
-    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC1n9JaXIQz8E4x\n+Lk7tV8n67KzbVA+BJn5jSywpT7nSNAc+UQqjyxXYMlbigd9aTfLRhZLD53Bm7e3\nZhoeyp5hhFqta2Qq9qOFSHI7TbDr178CIFxFpeibWs4lYgFdEMWr/BYiKHsG7Ug/\nDgVNgl3fYY1kQKBpZAXUNGoHsXNHYW0+Fht8s/b+MV9q2opb3657pigbC+FN+uxz\nyAtzRhrBcqn1/HetJEy8epLvTHTDvcCBxerAe86IBoXDAoeu71/QmVyXNUg2snfm\np+z/zSI7oi+fpLVJgg9reAxyx1szYAcVZNEWYGOo/DDkywriOxE1xrt/GHAwRPvs\n0OVbwN8JAgMBAAECggEAIyBk64sHGpB4XxvOn2ilna/tINycb1IugWA3a3aaItsn\nPONMtrp4BfI3H1gjuLKX0t2cRCoiBabbMkIx/RCM7ylM7Etf1RtcZtOrHCMbe5F/\nZKbjkajTwvAd/Ibm4pvyzx9zHGod2SodFezdQ69Z/nD8io4hOCDbK75zX0eHlx9C\nINgEEKcGY4SJxP0fw24QsnnxzkgTgQB1PpMcjbkrkZB5LtWI6CO2/Mb8dtUVbTOt\n7i5Hm8dJKGoq2CjY7paIHBOKIACniXyJaWRmFg4NKS2vEDyCwVdfvbojIBHfKQSc\neM7G+y/+kHprCQYzZTevcCx/VxvujWipCjY3w45YvQKBgQDi04egFe4k0+Zw9oW/\nTPuyUuGd+vL0R4ebUcbDAR8TEwm1HH+7jjqvZau6aBI4qSKngYnsAiA2/UKNJyck\n0fT0A/Mb7V8w/lT8MCzT+hLTy7Xw5UE78GFFvPh/j3nA23UMR4O6puSLiQ/TNVOj\n83kyLwmQLT55+w8EJsAoOLN35wKBgQDM+/lJcLARVMoG4edEwWrcDg3UYtTYZvlM\n6TQED7d5idolmXe7LZVZYrmSwByuVXAyMI/mD7bigAOWUowXCLIkKu/tlMuTxhFH\n+At/kyVjRq7msJ8oMtoJBKRVHoBVbsP9OCwavPsnBpiogds1Vwi1uc8YDzxEv388\nAKcBuzdTjwKBgDC18HhGfV/XSbOUnWBZreu7tMvyal5fRhXq195kzUGRYxJLznp+\nrsef8+MSGmekmtaSEQZn5ncoqDQb5mIX3JzShFDJBxpEZAfMaLQVDhoBs07KTNoM\nYzdQv6TVMPZjqp06dmWNFaOJiaZ320BoNuy6ATm/HZ2gdrcTg0yf8JqdAoGBAJty\nXepehXavKQGtIHeYgdPc6InuZOCyvk2f761Aye9mJcMrrYuJlt+RKY9rFpTx/8Jf\n51AdDKCZWZ8OfGQfWRBqa0Zs9zDaHFLKfNXDHbA6cvpIaHnQjl4WYhSWq9WdyQzn\nIzMnqwI+U1g+GaFKnjVJcg4Zx6eO3QsAp6V9dwhrAoGARjbYx8Gb/k+tgOuaDDvI\nNDyr4JIZw3FX7s95KCc44+3Tr4ws4VE5OSIeNZ5HKpCCXfJQjW9vIedY5qXWQTIY\n8jqZwbt+P7sdEZxowh4qa6v+UNeTJKsRzoy+1P/l6GSkTL4lUkltDhDY/aXJL4NL\nIHF6Jfumin/fyOPWlYGi5ZY=\n-----END PRIVATE KEY-----\n",
-    "client_email": "aaw-automation@aaw-automation.iam.gserviceaccount.com",
-    "client_id": "101341220386034274407",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/aaw-automation%40aaw-automation.iam.gserviceaccount.com",
-    "universe_domain": "googleapis.com"
-}
+
+def get_service_account_info():
+    service_account_info = st.secrets.get("google_service_account")
+    if service_account_info is not None:
+        return dict(service_account_info)
+
+    service_account_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if service_account_json:
+        return json.loads(service_account_json)
+
+    raise RuntimeError(
+        "Missing Google service-account credentials. Add the google_service_account block to Streamlit Secrets or set GOOGLE_SERVICE_ACCOUNT_JSON."
+    )
 
 # ─── PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Lead Review", page_icon="✉️", layout="centered")
@@ -260,7 +260,7 @@ st.markdown("""
 @st.cache_resource
 def get_worksheet():
     creds = service_account.Credentials.from_service_account_info(
-        SERVICE_ACCOUNT_INFO,
+    get_service_account_info(),
         scopes=[
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
