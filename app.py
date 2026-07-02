@@ -36,17 +36,21 @@ APPROVAL_COL = "approval_status"
 
 
 def get_service_account_info():
-    service_account_info = st.secrets.get("google_service_account")
-    if service_account_info is not None:
-        return dict(service_account_info)
+  service_account_info = st.secrets.get("google_service_account")
+  if service_account_info is not None:
+    return dict(service_account_info)
 
-    service_account_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
-    if service_account_json:
-        return json.loads(service_account_json)
+  service_account_json_secret = st.secrets.get("google_service_account_json")
+  if service_account_json_secret is not None:
+    return json.loads(str(service_account_json_secret))
 
-    raise RuntimeError(
-        "Missing Google service-account credentials. Add the google_service_account block to Streamlit Secrets or set GOOGLE_SERVICE_ACCOUNT_JSON."
-    )
+  service_account_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+  if service_account_json:
+    return json.loads(service_account_json)
+
+  raise RuntimeError(
+    "Missing Google service-account credentials. Add the google_service_account block to Streamlit Secrets or set GOOGLE_SERVICE_ACCOUNT_JSON."
+  )
 
 # ─── PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Lead Review", page_icon="✉️", layout="centered")
