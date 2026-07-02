@@ -1,6 +1,7 @@
 import html
 import json
 import os
+import re
 import streamlit as st
 import pandas as pd
 import gspread
@@ -42,15 +43,28 @@ def get_service_account_info():
 
   service_account_json_secret = st.secrets.get("google_service_account_json")
   if service_account_json_secret is not None:
-    return json.loads(str(service_account_json_secret))
+    return parse_service_account_json(str(service_account_json_secret))
 
   service_account_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
   if service_account_json:
-    return json.loads(service_account_json)
+    return parse_service_account_json(service_account_json)
 
   raise RuntimeError(
     "Missing Google service-account credentials. Add the google_service_account block to Streamlit Secrets or set GOOGLE_SERVICE_ACCOUNT_JSON."
   )
+
+
+def parse_service_account_json(service_account_json_text):
+  try:
+    return json.loads(service_account_json_text)
+  except json.JSONDecodeError:
+    repaired_text = re.sub(
+      r'("private_key"\s*:\s*")([\s\S]*?)(")',
+      lambda match: match.group(1) + match.group(2).replace("\\", "\\\\").replace("\r", "").replace("\n", "\\n") + match.group(3),
+      service_account_json_text,
+      count=1,
+    )
+    return json.loads(repaired_text)
 
 # ─── PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Lead Review", page_icon="✉️", layout="centered")
