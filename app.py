@@ -101,14 +101,17 @@ st.markdown("""
   }
   .progress-text { font-size: 12.5px; color: var(--text-secondary); font-weight: 500; }
   .progress-count { font-size: 12.5px; color: var(--text-muted); }
-  div[data-testid="stProgress"] > div > div {
-    background-color: #1c1c1c !important;
-    border-radius: 20px !important;
-    height: 6px !important;
+  .progress-track {
+    width: 100%;
+    height: 6px;
+    background: #1c1c1c;
+    border-radius: 20px;
+    overflow: hidden;
   }
-  div[data-testid="stProgress"] > div > div > div {
-    background-image: linear-gradient(90deg, #5c7a66, var(--accent)) !important;
-    border-radius: 20px !important;
+  .progress-fill {
+    height: 100%;
+    background-image: linear-gradient(90deg, #5c7a66, var(--accent));
+    border-radius: 20px;
   }
 
   /* ── Card ── */
@@ -336,10 +339,11 @@ def main():
         '<div class="progress-wrap"><div class="progress-row">',
         f'<span class="progress-text">{reviewed} of {total} reviewed</span>',
         f'<span class="progress-count">{len(pending)} left</span>',
-        '</div></div>',
+      '</div>',
+      f'<div class="progress-track"><div class="progress-fill" style="width: {reviewed / total * 100 if total > 0 else 0:.2f}%"></div></div>',
+      '</div>',
     ])
     st.markdown(progress_html, unsafe_allow_html=True)
-    st.progress(reviewed / total if total > 0 else 0)
     st.markdown("<div style='height:22px'></div>", unsafe_allow_html=True)
 
     # ── CURRENT LEAD ──
