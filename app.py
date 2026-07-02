@@ -21,6 +21,12 @@ def initials(name):
         return parts[0][:2].upper()
     return (parts[0][0] + parts[-1][0]).upper()
 
+
+def get_review_queue(df):
+    reviewed_rows = st.session_state.setdefault("reviewed_rows", set())
+    pending_mask = df[APPROVAL_COL].astype(str).str.strip().isin(["", "pending_review"])
+    return df[pending_mask & ~df.index.isin(reviewed_rows)]
+
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 SHEET_ID = "1SAVhTWod1nQynvmkgLiM_a6yfC0PVSTtwpXPqhK9cEA"
 SHEET_NAME = "Leads"
@@ -62,7 +68,7 @@ st.markdown("""
     --text-muted: #4a4a4a;
   }
 
-  .block-container { padding-top: 2.2rem; max-width: 640px; }
+  .block-container { padding-top: 4.5rem; max-width: 640px; }
 
   /* ── Header ── */
   .app-header {
@@ -280,6 +286,10 @@ def write_decision(row_index, decision, headers):
     load_data.clear()
 
 
+def mark_reviewed(row_index):
+    st.session_state.setdefault("reviewed_rows", set()).add(row_index)
+
+
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 def main():
     header_html = "".join([
@@ -300,7 +310,7 @@ def main():
     if APPROVAL_COL not in df.columns:
         df[APPROVAL_COL] = ""
 
-    pending = df[df[APPROVAL_COL].astype(str).str.strip().isin(["", "pending_review"])]
+    pending = get_review_queue(df)
     total = len(df)
     reviewed = total - len(pending)
 
@@ -408,15 +418,22 @@ def main():
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
     # ── BUTTONS ──
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("✕  Reject", key="reject", use_container_width=True):
+            mark_reviewed(row_index)
             write_decision(row_index, "rejected", headers)
             st.rerun()
     with col2:
         if st.button("✓  Approve", key="approve", type="primary", use_container_width=True):
+            mark_reviewed(row_index)
             write_decision(row_index, "approved", headers)
             st.rerun()
+    with col3:
+        if st.button("↷  Later", key="later", use_container_width=True):
+            mark_reviewed(row_index)
+            st.rerun()
+
 
 if __name__ == "__main__":
     main()
